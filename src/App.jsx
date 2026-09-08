@@ -1780,11 +1780,6 @@ export default function RiskSimulator() {
                       </button>
                     ))}
                   </div>
-                  <div className="text-[10px] font-mono text-zinc-600 leading-relaxed">
-                    {cfg.fnoSegment === "intraday"
-                      ? "Cash equity intraday — whole share quantity, no lot concept."
-                      : "Whole-lot sizing — quantity is always Lots × Lot Size."}
-                  </div>
                 </div>
               )}
 
@@ -2267,7 +2262,7 @@ export default function RiskSimulator() {
                             <td className={`px-3 py-1.5 text-right ${t.netPL >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                               {fmtMoney(t.netPL)}
                             </td>
-                            <td className="px-3 py-1.5 text-right text-[#2B7FFF]">{fmtMoney(t.capital)}</td>
+                            <td className="px-3 py-1.5 text-right text-[#74D4FF]">{fmtMoney(t.capital)}</td>
                             <td
                               className={`px-3 py-1.5 text-right ${
                                 t.capital - (lastCleanCfgRef.current?.initialCapital ?? cfg.initialCapital) >= 0
@@ -2497,7 +2492,7 @@ export default function RiskSimulator() {
                             <td className={`px-3 py-1.5 text-right ${t.netPL >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                               {fmtMoney(t.netPL)}
                             </td>
-                            <td className="px-3 py-1.5 text-right text-[#2B7FFF]">{fmtMoney(t.capital)}</td>
+                            <td className="px-3 py-1.5 text-right text-[#74D4FF]">{fmtMoney(t.capital)}</td>
                             <td
                               className={`px-3 py-1.5 text-right ${
                                 t.capital - (lastCleanCfgRef.current?.initialCapital ?? cfg.initialCapital) >= 0
