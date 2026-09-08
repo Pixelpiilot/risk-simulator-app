@@ -27,6 +27,7 @@ import {
   Activity,
   GripVertical,
   ChevronDown,
+  X,
 } from "lucide-react";
 const DEFAULTS = {
   initialCapital: 100,
@@ -1073,14 +1074,14 @@ function TradeAnalyticsSection({ trades, initialCapital }) {
             <CartesianGrid stroke="#CAD5E2" strokeOpacity={0.08} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="n"
-              stroke="#52525b"
+              stroke="#737373"
               fontSize={11}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              stroke="#52525b"
+              stroke="#737373"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -1167,14 +1168,14 @@ function MultiSimHistogram({ runs, selectedRunIdx, onSelectRun }) {
             <CartesianGrid stroke="#CAD5E2" strokeOpacity={0.08} strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="index"
-              stroke="#52525b"
+              stroke="#737373"
               fontSize={11}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              stroke="#52525b"
+              stroke="#737373"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -1242,7 +1243,7 @@ function ScenarioCard({ title, run, tone, valueColor, selected, onClick }) {
 // user can see how consistent (or luck-dependent) their edge really is
 // instead of judging it off a single run. Collapsible so it can be tucked
 // away once reviewed, since the histogram + scenario cards take real space.
-function BatchRunSection({ mode, cfg, batchResult, onRunBatch, onSelectRun, selectedRunIdx, onBatchCountChange }) {
+function BatchRunSection({ mode, cfg, batchResult, onRunBatch, onClearBatch, onSelectRun, selectedRunIdx, onBatchCountChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const activeMode = mode === "fno" ? "fno" : "single";
   const hasMatchingBatch = batchResult && batchResult.mode === activeMode;
@@ -1270,15 +1271,23 @@ function BatchRunSection({ mode, cfg, batchResult, onRunBatch, onSelectRun, sele
             onChange={onBatchCountChange}
             step="1"
             placeholder="e.g. 100"
-            className="w-24 bg-black/30 border border-white/[0.08] text-zinc-100 rounded-lg text-[11px] px-2.5 py-1.5 outline-none focus:ring-1 focus:border-indigo-500/70 focus:ring-indigo-500/20 transition-colors font-mono"
+            className="scenario-count-input w-24 bg-black/30 border border-white/[0.08] text-zinc-100 rounded-lg text-[11px] px-2.5 py-1.5 outline-none focus:ring-1 focus:border-indigo-500/70 focus:ring-indigo-500/20 transition-colors font-mono"
           />
           <button
             onClick={onRunBatch}
             disabled={!canRun}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-none"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono bg-indigo-500/15 border border-indigo-500/30 hover:bg-indigo-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-none text-[#9F9FA9]"
           >
             <Play size={11} fill="currentColor" />
-            Run Scenarios{canRun ? ` (${Math.round(Number(cfg.batchCount))})` : ""}
+            RUN
+          </button>
+          <button
+            onClick={onClearBatch}
+            disabled={!hasMatchingBatch}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono bg-zinc-800/60 text-zinc-400 border border-zinc-700/50 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-none"
+          >
+            <X size={11} />
+            Clear
           </button>
         </div>
       </div>
@@ -1439,6 +1448,7 @@ export default function RiskSimulator() {
       setResult(runSimulation(clean));
       setActiveRunLabel(null);
       setSelectedBatchRunIdx(null);
+      setBatchResult(null);
     } else if (mode === "fno") {
       setSweep(null);
       lastCleanCfgRef.current = clean;
@@ -1446,6 +1456,7 @@ export default function RiskSimulator() {
       setResult(runSimulationFnO(clean));
       setActiveRunLabel(null);
       setSelectedBatchRunIdx(null);
+      setBatchResult(null);
     } else if (mode === "sweep") {
       const step = Math.min(Math.max(Math.round(Number(cfg.sweepStep) || 10), 1), 50);
       let runsPerPoint = Math.min(Math.max(Math.round(Number(cfg.sweepRuns) || 1), 1), 2000);
@@ -1527,6 +1538,15 @@ export default function RiskSimulator() {
     setSelectedBatchRunIdx(null);
   }, [cfg, mode]);
 
+  // Clears the Multi Simulations batch entirely — back to the empty "Set a
+  // Scenarios count..." state — without touching the main Trade Log/stats
+  // above (those keep showing whatever single run or selected batch run
+  // was last loaded there).
+  const handleClearBatch = useCallback(() => {
+    setBatchResult(null);
+    setSelectedBatchRunIdx(null);
+  }, []);
+
   // Loads one batch run's exact trade sequence + result into the normal
   // result state, so the stats cards, Per-Trade P/L chart and Trade Log
   // above all switch to showing that specific run — same recalculation
@@ -1539,6 +1559,22 @@ export default function RiskSimulator() {
       setResult({ ...run.result, winLossSeq: run.winLossSeq });
       setSelectedBatchRunIdx(run.index);
       setActiveRunLabel(`Batch Run #${run.index}`);
+    },
+    [batchResult]
+  );
+
+  // After a manual drag-reorder or Result-flip recalculates the Trade Log,
+  // checks whether the new outcome (net P/L, at display precision) now
+  // matches one of the runs already sitting in the Multi Simulations
+  // histogram for the current mode. Returns that run (or null) so callers
+  // can both relabel the Trade Log AND move the highlighted bar in
+  // Simulation Outcomes to follow it — if nothing matches, there's nothing
+  // to point at, so both get cleared.
+  const matchBatchRun = useCallback(
+    (recalculatedResult) => {
+      if (!batchResult || batchResult.mode !== lastRunModeRef.current) return null;
+      const targetCents = Math.round(recalculatedResult.netPL * 100);
+      return batchResult.runs.find((r) => Math.round(r.result.netPL * 100) === targetCents) || null;
     },
     [batchResult]
   );
@@ -1564,8 +1600,11 @@ export default function RiskSimulator() {
         lastRunModeRef.current === "fno" ? simulateFromSequenceFnO : simulateFromSequence;
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
+      const match = matchBatchRun(recalculated);
+      setActiveRunLabel(match ? `Batch Run #${match.index}` : null);
+      setSelectedBatchRunIdx(match ? match.index : null);
     },
-    [result]
+    [result, matchBatchRun]
   );
 
   // Flips the WIN/LOSS outcome of the trade at idx within the underlying
@@ -1583,10 +1622,13 @@ export default function RiskSimulator() {
         lastRunModeRef.current === "fno" ? simulateFromSequenceFnO : simulateFromSequence;
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
+      const match = matchBatchRun(recalculated);
+      setActiveRunLabel(match ? `Batch Run #${match.index}` : null);
+      setSelectedBatchRunIdx(match ? match.index : null);
       const newWinRate = seq.length ? (seq.filter(Boolean).length / seq.length) * 100 : 0;
       setCfg((c) => ({ ...c, winRate: Number(newWinRate.toFixed(2)) }));
     },
-    [result]
+    [result, matchBatchRun]
   );
 
   const handleRowDragStart = (idx) => (e) => {
@@ -1640,8 +1682,12 @@ export default function RiskSimulator() {
     <div className="min-h-screen bg-[#0a0b0d] text-zinc-100 font-sans text-sm relative overflow-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        html { overflow-y: scroll; scrollbar-gutter: stable; }
         .font-sans { font-family: 'Space Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif !important; }
         .font-mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace !important; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+        .scenario-count-input::-webkit-outer-spin-button,
+        .scenario-count-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .scenario-count-input { -moz-appearance: textfield; }
       `}</style>
       {/* structural background: faint grid + single restrained vignette, no decorative color blobs */}
       <div
@@ -1797,11 +1843,6 @@ export default function RiskSimulator() {
                       {cm === "profit" ? "On Profit" : "On Capital"}
                     </button>
                   ))}
-                </div>
-                <div className="text-[10px] font-mono text-zinc-600 -mt-1 mb-3 leading-relaxed">
-                  {cfg.cascadeMode === "capital"
-                    ? "Win/Loss Risk % is taken from current total capital."
-                    : "Win/Loss Risk % is taken from the last win's net profit."}
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   <Field label="Win Risk %">
@@ -2089,7 +2130,7 @@ export default function RiskSimulator() {
                     sub={fmtPct((result.netPL / cfg.initialCapital) * 100)}
                     tone={result.netPL >= 0 ? "pos" : "neg"}
                   />
-                  <MiniStat label="Max Drawdown" value={fmtPct(result.maxDD)} sub={fmtMoney(result.maxDDValue)} valueColor="#E7180B" />
+                  <MiniStat label="Max Drawdown" value={fmtPct(result.maxDD)} sub={`-${fmtMoney(result.maxDDValue)}`} valueColor="#E7180B" subColor="#E7180B" />
                 </div>
 
                 <div className={`grid grid-cols-2 ${showPriceCol ? "sm:grid-cols-5" : "sm:grid-cols-4"} gap-3`}>
@@ -2273,6 +2314,7 @@ export default function RiskSimulator() {
                 cfg={cfg}
                 batchResult={batchResult}
                 onRunBatch={handleRunBatch}
+                onClearBatch={handleClearBatch}
                 onSelectRun={handleSelectBatchRun}
                 selectedRunIdx={selectedBatchRunIdx}
                 onBatchCountChange={setField("batchCount")}
@@ -2289,7 +2331,7 @@ export default function RiskSimulator() {
                     sub={fmtPct((result.netPL / cfg.initialCapital) * 100)}
                     tone={result.netPL >= 0 ? "pos" : "neg"}
                   />
-                  <MiniStat label="Max Drawdown" value={fmtPct(result.maxDD)} sub={fmtMoney(result.maxDDValue)} valueColor="#E7180B" />
+                  <MiniStat label="Max Drawdown" value={fmtPct(result.maxDD)} sub={`-${fmtMoney(result.maxDDValue)}`} valueColor="#E7180B" subColor="#E7180B" />
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -2502,6 +2544,7 @@ export default function RiskSimulator() {
                 cfg={cfg}
                 batchResult={batchResult}
                 onRunBatch={handleRunBatch}
+                onClearBatch={handleClearBatch}
                 onSelectRun={handleSelectBatchRun}
                 selectedRunIdx={selectedBatchRunIdx}
                 onBatchCountChange={setField("batchCount")}
@@ -2630,7 +2673,6 @@ export default function RiskSimulator() {
                             fill="#42D3F2"
                             stroke="#0a0b0d"
                             strokeWidth={2}
-                            label={{ value: "Best", position: "top", fill: "#42D3F2", fontSize: 10 }}
                           />
                         )}
                       </ComposedChart>
