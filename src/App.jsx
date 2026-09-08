@@ -1123,7 +1123,7 @@ function MultiSimTooltip({ active, payload, label }) {
   const color = entry.payload.win ? "#7BF1A8" : "#FF8904";
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 shadow-xl shadow-black/50 font-mono">
-      <div className="text-[10px] text-zinc-500 mb-1.5">Scenario #{label}</div>
+      <div className="text-[10px] text-zinc-500 mb-1.5">Scenario : {label}</div>
       <div className="flex items-center gap-2 text-xs">
         <span className="w-2 h-2 rounded-full flex-none" style={{ background: color }} />
         <span className="text-zinc-400">Net P/L</span>
@@ -1218,7 +1218,7 @@ function ScenarioCard({ title, run, tone, valueColor, selected, onClick }) {
       }`}
     >
       <div className="text-[11px] text-zinc-500 mb-1.5">
-        {title} <span style={{ color: "#CAD5E2" }}>(Scenario #{run.index})</span>
+        {title} <span style={{ color: "#CAD5E2" }}>(Scenario : {run.index})</span>
       </div>
       <div
         className={`font-mono text-base font-semibold ${valueColor ? "" : toneClass}`}
@@ -1562,7 +1562,7 @@ export default function RiskSimulator() {
       lastRunModeRef.current = batchResult.mode;
       setResult({ ...run.result, winLossSeq: run.winLossSeq });
       setSelectedBatchRunIdx(run.index);
-      setActiveRunLabel(`Scenario #${run.index}`);
+      setActiveRunLabel(`Scenario : ${run.index}`);
     },
     [batchResult]
   );
@@ -1605,7 +1605,7 @@ export default function RiskSimulator() {
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
       const match = matchBatchRun(recalculated);
-      setActiveRunLabel(match ? `Scenario #${match.index}` : null);
+      setActiveRunLabel(match ? `Scenario : ${match.index}` : null);
       setSelectedBatchRunIdx(match ? match.index : null);
     },
     [result, matchBatchRun]
@@ -1627,7 +1627,7 @@ export default function RiskSimulator() {
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
       const match = matchBatchRun(recalculated);
-      setActiveRunLabel(match ? `Scenario #${match.index}` : null);
+      setActiveRunLabel(match ? `Scenario : ${match.index}` : null);
       setSelectedBatchRunIdx(match ? match.index : null);
       const newWinRate = seq.length ? (seq.filter(Boolean).length / seq.length) * 100 : 0;
       setCfg((c) => ({ ...c, winRate: Number(newWinRate.toFixed(2)) }));
@@ -2211,7 +2211,7 @@ export default function RiskSimulator() {
                       <thead>
                         <tr className="bg-zinc-900 text-zinc-500 text-[10px] uppercase tracking-wide sticky top-0 z-10">
                           <th className="text-left px-3 py-2 font-medium w-8"></th>
-                          <th className="text-left px-3 py-2 font-medium">#</th>
+                          <th className="text-left px-3 py-2 font-medium">No</th>
                           <th className="text-left px-3 py-2 font-medium">Result</th>
                           <th className="text-right px-3 py-2 font-medium">Risk</th>
                           <th className="text-right px-3 py-2 font-medium">Lots</th>
@@ -2439,7 +2439,7 @@ export default function RiskSimulator() {
                       <thead>
                         <tr className="bg-zinc-900 text-zinc-500 text-[10px] uppercase tracking-wide sticky top-0 z-10">
                           <th className="text-left px-3 py-2 font-medium w-8"></th>
-                          <th className="text-left px-3 py-2 font-medium">#</th>
+                          <th className="text-left px-3 py-2 font-medium">No</th>
                           <th className="text-left px-3 py-2 font-medium">Result</th>
                           <th className="text-right px-3 py-2 font-medium">Risk</th>
                           <th className="text-right px-3 py-2 font-medium">{isFnoIntraday ? "Shares" : "Lots"}</th>
