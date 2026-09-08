@@ -1123,7 +1123,7 @@ function MultiSimTooltip({ active, payload, label }) {
   const color = entry.payload.win ? "#7BF1A8" : "#FF8904";
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 shadow-xl shadow-black/50 font-mono">
-      <div className="text-[10px] text-zinc-500 mb-1.5">Run #{label}</div>
+      <div className="text-[10px] text-zinc-500 mb-1.5">Scenario #{label}</div>
       <div className="flex items-center gap-2 text-xs">
         <span className="w-2 h-2 rounded-full flex-none" style={{ background: color }} />
         <span className="text-zinc-400">Net P/L</span>
@@ -1218,7 +1218,7 @@ function ScenarioCard({ title, run, tone, valueColor, selected, onClick }) {
       }`}
     >
       <div className="text-[11px] text-zinc-500 mb-1.5">
-        {title} <span className="text-zinc-600">(Run #{run.index})</span>
+        {title} <span style={{ color: "#CAD5E2" }}>(Scenario #{run.index})</span>
       </div>
       <div
         className={`font-mono text-base font-semibold ${valueColor ? "" : toneClass}`}
@@ -1231,7 +1231,10 @@ function ScenarioCard({ title, run, tone, valueColor, selected, onClick }) {
         {fmtMoney(r.netPL)} net
       </div>
       <div className="font-mono text-[10px] text-zinc-500 mt-2">
-        Win Rate: {fmtPct(r.winRateActual)} | Max DD: {fmtMoney(r.maxDDValue)} ({fmtPct(r.maxDD)})
+        Win Rate: <span style={{ color: "#FEF9C2" }}>{fmtPct(r.winRateActual)}</span> | Max DD:{" "}
+        <span style={{ color: "#FF6467" }}>
+          {fmtMoney(r.maxDDValue)} ({fmtPct(r.maxDD)})
+        </span>
       </div>
     </button>
   );
@@ -1536,6 +1539,7 @@ export default function RiskSimulator() {
       },
     });
     setSelectedBatchRunIdx(null);
+    setActiveRunLabel(null);
   }, [cfg, mode]);
 
   // Clears the Multi Simulations batch entirely — back to the empty "Set a
@@ -1558,7 +1562,7 @@ export default function RiskSimulator() {
       lastRunModeRef.current = batchResult.mode;
       setResult({ ...run.result, winLossSeq: run.winLossSeq });
       setSelectedBatchRunIdx(run.index);
-      setActiveRunLabel(`Batch Run #${run.index}`);
+      setActiveRunLabel(`Scenario #${run.index}`);
     },
     [batchResult]
   );
@@ -1601,7 +1605,7 @@ export default function RiskSimulator() {
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
       const match = matchBatchRun(recalculated);
-      setActiveRunLabel(match ? `Batch Run #${match.index}` : null);
+      setActiveRunLabel(match ? `Scenario #${match.index}` : null);
       setSelectedBatchRunIdx(match ? match.index : null);
     },
     [result, matchBatchRun]
@@ -1623,7 +1627,7 @@ export default function RiskSimulator() {
       const recalculated = simulateFn(lastCleanCfgRef.current, seq);
       setResult({ ...recalculated, winLossSeq: seq });
       const match = matchBatchRun(recalculated);
-      setActiveRunLabel(match ? `Batch Run #${match.index}` : null);
+      setActiveRunLabel(match ? `Scenario #${match.index}` : null);
       setSelectedBatchRunIdx(match ? match.index : null);
       const newWinRate = seq.length ? (seq.filter(Boolean).length / seq.length) * 100 : 0;
       setCfg((c) => ({ ...c, winRate: Number(newWinRate.toFixed(2)) }));
