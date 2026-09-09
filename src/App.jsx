@@ -869,7 +869,7 @@ function GroupTitle({ children, icon: Icon, color = "blue" }) {
   );
 }
 
-function StatCell({ label, value, tone, icon: Icon, sub }) {
+function StatCell({ label, value, tone, icon: Icon, sub, valueColor }) {
   const toneClass = tone === "pos" ? "text-emerald-400" : tone === "neg" ? "text-red-400" : "text-zinc-100";
   const barColor = tone === "pos" ? "bg-emerald-500" : tone === "neg" ? "bg-red-500" : "bg-zinc-500";
   return (
@@ -883,7 +883,12 @@ function StatCell({ label, value, tone, icon: Icon, sub }) {
           </span>
         )}
       </div>
-      <div className={`font-semibold text-lg sm:text-xl mt-1.5 font-mono ${toneClass}`}>{value}</div>
+      <div
+        className={`font-semibold text-lg sm:text-xl mt-1.5 font-mono ${valueColor ? "" : toneClass}`}
+        style={valueColor ? { color: valueColor } : undefined}
+      >
+        {value}
+      </div>
       {sub && <div className={`text-[11px] mt-1 font-mono ${toneClass}`}>{sub}</div>}
     </div>
   );
@@ -1218,7 +1223,7 @@ function ScenarioCard({ title, run, tone, valueColor, selected, onClick }) {
       }`}
     >
       <div className="text-[11px] text-zinc-500 mb-1.5">
-        {title} <span style={{ color: "#CAD5E2" }}>(Scenario : {run.index})</span>
+        {title} <span style={{ color: "#CAD5E2" }}>: {run.index}</span>
       </div>
       <div
         className={`font-mono text-base font-semibold ${valueColor ? "" : toneClass}`}
@@ -1671,6 +1676,9 @@ export default function RiskSimulator() {
   let sweepChartData = [];
   let sweepBest = null;
   let sweepWorst = null;
+  let winRateRR = null;
+  let winRatePoint0 = null;
+  let winRatePoint100 = null;
   if (sweep) {
     sweepChartData = sweep.points.map((p) => ({
       wr: p.winRate,
@@ -1680,6 +1688,14 @@ export default function RiskSimulator() {
     }));
     sweepBest = sweep.points.reduce((a, b) => (b.avgReturnPct > a.avgReturnPct ? b : a), sweep.points[0]);
     sweepWorst = sweep.points.reduce((a, b) => (b.avgReturnPct < a.avgReturnPct ? b : a), sweep.points[0]);
+    // Risk:Reward implied by the two ends of the win-rate spectrum — the
+    // return at 0% win rate (the pure-loss case, i.e. the "risk") against
+    // the return at 100% win rate (the pure-win case, i.e. the "reward").
+    winRatePoint0 = sweep.points.find((p) => p.winRate === 0) || sweep.points[0];
+    winRatePoint100 = sweep.points.find((p) => p.winRate === 100) || sweep.points[sweep.points.length - 1];
+    const riskMag = Math.abs(winRatePoint0.avgReturnPct);
+    const rewardMag = Math.abs(winRatePoint100.avgReturnPct);
+    winRateRR = riskMag > 0 ? rewardMag / riskMag : rewardMag > 0 ? Infinity : 0;
   }
 
   return (
@@ -2552,7 +2568,7 @@ export default function RiskSimulator() {
 
             {mode === "sweep" && sweep && (
               <>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                   <StatCell
                     label="Best Win Rate"
                     value={sweepBest.winRate + "%"}
@@ -2566,6 +2582,13 @@ export default function RiskSimulator() {
                     tone={sweepWorst.avgReturnPct >= 0 ? "pos" : "neg"}
                     icon={sweepWorst.avgReturnPct >= 0 ? TrendingUp : TrendingDown}
                     sub={`${sweepWorst.avgReturnPct >= 0 ? "+" : ""}${sweepWorst.avgReturnPct.toFixed(2)}% (${sweepWorst.avgNetPL >= 0 ? "+" : ""}${fmtMoney(sweepWorst.avgNetPL)})`}
+                  />
+                  <StatCell
+                    label="Win Rate RR"
+                    value={isFinite(winRateRR) ? winRateRR.toFixed(2) : "∞"}
+                    icon={Percent}
+                    valueColor="#DAB2FF"
+                    sub={`0%: ${winRatePoint0.avgReturnPct.toFixed(2)}% · 100%: ${winRatePoint100.avgReturnPct >= 0 ? "+" : ""}${winRatePoint100.avgReturnPct.toFixed(2)}%`}
                   />
                   <StatCell
                     label="Sample Size"
