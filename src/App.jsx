@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   ComposedChart,
   Area,
@@ -1367,6 +1367,79 @@ function BatchRunSection({ mode, cfg, batchResult, onRunBatch, onClearBatch, onS
   );
 }
 
+// Floating Run button: fixed to the viewport (not the Configuration column)
+// so it stays reachable even after that sidebar is scrolled past, and
+// free-draggable to wherever on screen the user wants it parked. A plain
+// click (pointer released without any real movement) fires onRun; a drag
+// just relocates the button without running anything. Position is clamped
+// to stay fully on-screen, including after a window resize.
+function DraggableRunButton({ onRun, label }) {
+  const [pos, setPos] = useState(null); // null until we know viewport size to place the default spot
+  const btnRef = useRef(null);
+  const dragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
+
+  const clamp = useCallback((x, y) => {
+    const el = btnRef.current;
+    const w = el ? el.offsetWidth : 170;
+    const h = el ? el.offsetHeight : 48;
+    const maxX = Math.max(4, window.innerWidth - w - 4);
+    const maxY = Math.max(4, window.innerHeight - h - 4);
+    return { x: Math.min(Math.max(4, x), maxX), y: Math.min(Math.max(4, y), maxY) };
+  }, []);
+
+  useEffect(() => {
+    setPos((p) => p || clamp(window.innerWidth - 194, window.innerHeight - 88));
+  }, [clamp]);
+
+  useEffect(() => {
+    const onResize = () => setPos((p) => (p ? clamp(p.x, p.y) : p));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [clamp]);
+
+  const handlePointerMove = useCallback(
+    (e) => {
+      const d = dragRef.current;
+      if (!d.dragging) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) d.moved = true;
+      setPos(clamp(d.baseX + dx, d.baseY + dy));
+    },
+    [clamp]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    const d = dragRef.current;
+    d.dragging = false;
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    if (!d.moved) onRun();
+  }, [handlePointerMove, onRun]);
+
+  const handlePointerDown = (e) => {
+    if (!pos) return;
+    dragRef.current = { dragging: true, moved: false, startX: e.clientX, startY: e.clientY, baseX: pos.x, baseY: pos.y };
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
+  if (!pos) return null;
+
+  return (
+    <button
+      ref={btnRef}
+      onPointerDown={handlePointerDown}
+      style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 50, touchAction: "none" }}
+      className="flex items-center gap-2 bg-gradient-to-r from-zinc-700 to-zinc-950 border border-zinc-700 text-zinc-100 font-semibold text-sm py-3 px-5 rounded-full shadow-lg shadow-black/50 hover:brightness-125 active:brightness-95 transition-[filter] cursor-grab active:cursor-grabbing select-none"
+    >
+      <GripVertical size={14} className="text-zinc-500" />
+      <Play size={15} fill="currentColor" />
+      {label}
+    </button>
+  );
+}
+
 const MODE_LABEL = {
   single: "Single Run",
   sweep: "Win Rate",
@@ -1758,7 +1831,7 @@ export default function RiskSimulator() {
         {/* Fixed two-column layout: config left (fixed width), results right (fills remaining space) */}
         <div className="flex flex-row gap-5 items-start overflow-x-auto">
           {/* Config column */}
-          <aside className={`${CARD} w-80 shrink-0 sticky top-4 p-4 sm:p-5`}>
+          <aside className={`${CARD} w-80 shrink-0 self-start p-4 sm:p-5`}>
             <div className="flex items-center gap-2 mb-4">
               <Settings2 size={16} className="text-zinc-300" />
               <span className="text-[15px] font-semibold text-zinc-100">Configuration</span>
@@ -2121,14 +2194,6 @@ export default function RiskSimulator() {
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={handleRun}
-                className="w-full bg-gradient-to-r from-zinc-700 to-zinc-950 border border-zinc-700 text-zinc-100 font-semibold text-sm py-3 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-black/40 hover:brightness-125 active:brightness-95 transition"
-              >
-                <Play size={15} fill="currentColor" />
-                {mode === "sweep" ? "RUN" : "Run Simulation"}
-              </button>
             </div>
           </aside>
 
@@ -2768,6 +2833,8 @@ export default function RiskSimulator() {
           </main>
         </div>
       </div>
+
+      <DraggableRunButton onRun={handleRun} label={mode === "sweep" ? "RUN" : "Run Simulation"} />
     </div>
   );
 }
