@@ -1373,22 +1373,23 @@ function BatchRunSection({ mode, cfg, batchResult, onRunBatch, onClearBatch, onS
 // click (pointer released without any real movement) fires onRun; a drag
 // just relocates the button without running anything. Position is clamped
 // to stay fully on-screen, including after a window resize.
-function DraggableRunButton({ onRun, label }) {
+function DraggableRunButton({ onRun }) {
   const [pos, setPos] = useState(null); // null until we know viewport size to place the default spot
   const btnRef = useRef(null);
   const dragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
+  const SIZE = 64;
 
   const clamp = useCallback((x, y) => {
     const el = btnRef.current;
-    const w = el ? el.offsetWidth : 170;
-    const h = el ? el.offsetHeight : 48;
+    const w = el ? el.offsetWidth : SIZE;
+    const h = el ? el.offsetHeight : SIZE;
     const maxX = Math.max(4, window.innerWidth - w - 4);
     const maxY = Math.max(4, window.innerHeight - h - 4);
     return { x: Math.min(Math.max(4, x), maxX), y: Math.min(Math.max(4, y), maxY) };
   }, []);
 
   useEffect(() => {
-    setPos((p) => p || clamp(window.innerWidth - 194, window.innerHeight - 88));
+    setPos((p) => p || clamp(window.innerWidth - SIZE - 24, window.innerHeight - SIZE - 24));
   }, [clamp]);
 
   useEffect(() => {
@@ -1430,12 +1431,10 @@ function DraggableRunButton({ onRun, label }) {
     <button
       ref={btnRef}
       onPointerDown={handlePointerDown}
-      style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 50, touchAction: "none" }}
-      className="flex items-center gap-2 bg-gradient-to-r from-zinc-700 to-zinc-950 border border-zinc-700 text-zinc-100 font-semibold text-sm py-3 px-5 rounded-full shadow-lg shadow-black/50 hover:brightness-125 active:brightness-95 transition-[filter] cursor-grab active:cursor-grabbing select-none"
+      style={{ position: "fixed", left: pos.x, top: pos.y, width: SIZE, height: SIZE, zIndex: 50, touchAction: "none" }}
+      className="flex items-center justify-center bg-gradient-to-r from-zinc-700 to-zinc-950 border border-zinc-700 text-zinc-100 font-semibold text-sm rounded-full shadow-lg shadow-black/50 hover:brightness-125 active:brightness-95 transition-[filter] cursor-grab active:cursor-grabbing select-none"
     >
-      <GripVertical size={14} className="text-zinc-500" />
-      <Play size={15} fill="currentColor" />
-      {label}
+      RUN
     </button>
   );
 }
@@ -2834,7 +2833,7 @@ export default function RiskSimulator() {
         </div>
       </div>
 
-      <DraggableRunButton onRun={handleRun} label={mode === "sweep" ? "RUN" : "Run Simulation"} />
+      <DraggableRunButton onRun={handleRun} />
     </div>
   );
 }
