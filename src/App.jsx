@@ -2826,7 +2826,7 @@ export default function RiskSimulator() {
 
             {mode === "sweep" && !sweep && (
               <div className={`${CARD} py-16 text-center text-zinc-500 text-sm`}>
-                No sweep run yet.
+                No  run yet.
               </div>
             )}
           </main>
