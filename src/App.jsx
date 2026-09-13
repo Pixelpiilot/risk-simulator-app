@@ -241,6 +241,7 @@ function simulateFromSequence(cfg, winLossSeq) {
   let maxDDValue = 0;
   let maxDDTradeIndex = null; // trade number where the biggest single peak-to-trough decline (% based) occurred — used only for the Max Drawdown stat, NOT the same thing as the lowest point on the equity curve
   let maxProfitValue = 0; // highest cumulative profit reached at any point in the run
+  let maxLossValue = 0; // deepest cumulative loss reached at any point in the run (<= 0)
   let prevNet = null;
   let prevWin = null;
   let hasWon = false;        // has any trade in this run won yet?
@@ -375,6 +376,7 @@ function simulateFromSequence(cfg, winLossSeq) {
       maxDDTradeIndex = i;
     }
     maxProfitValue = Math.max(maxProfitValue, capital - cfg.initialCapital);
+    maxLossValue = Math.min(maxLossValue, capital - cfg.initialCapital);
 
     if (isWin) {
       hasWon = true;
@@ -424,6 +426,7 @@ function simulateFromSequence(cfg, winLossSeq) {
     peakTradeIndex,
     troughTradeIndex,
     maxProfitValue,
+    maxLossValue,
     profitFactor,
     avgLots,
     totalLots,
@@ -475,6 +478,7 @@ function simulateFromSequenceFnO(cfg, winLossSeq) {
   let maxDDValue = 0;
   let maxDDTradeIndex = null;
   let maxProfitValue = 0;
+  let maxLossValue = 0;
   let prevNet = null;
   let prevWin = null;
   let hasWon = false;
@@ -626,6 +630,7 @@ function simulateFromSequenceFnO(cfg, winLossSeq) {
       maxDDTradeIndex = i;
     }
     maxProfitValue = Math.max(maxProfitValue, capital - cfg.initialCapital);
+    maxLossValue = Math.min(maxLossValue, capital - cfg.initialCapital);
 
     if (isWin) {
       hasWon = true;
@@ -679,6 +684,7 @@ function simulateFromSequenceFnO(cfg, winLossSeq) {
     peakTradeIndex,
     troughTradeIndex,
     maxProfitValue,
+    maxLossValue,
     profitFactor,
     avgLots,
     totalLots,
@@ -739,6 +745,8 @@ function runWinRateSweep(cfg, step, runsPerPoint, simType = "single") {
     const avgMaxDDValue = results.reduce((s2, r) => s2 + r.maxDDValue, 0) / results.length;
     const avgMaxProfitValue = results.reduce((s2, r) => s2 + r.maxProfitValue, 0) / results.length;
     const avgMaxProfitPct = (avgMaxProfitValue / cfg.initialCapital) * 100;
+    const avgMaxLossValue = results.reduce((s2, r) => s2 + r.maxLossValue, 0) / results.length;
+    const avgMaxLossPct = (avgMaxLossValue / cfg.initialCapital) * 100;
     // Reward:Risk realized at this win rate — how much upside (Max Profit)
     // was on offer for each unit of downside (Max DD) actually taken.
     const rewardRiskRatio = avgMaxDDValue !== 0 ? avgMaxProfitValue / avgMaxDDValue : avgMaxProfitValue > 0 ? Infinity : 0;
@@ -752,6 +760,8 @@ function runWinRateSweep(cfg, step, runsPerPoint, simType = "single") {
       avgMaxDDValue,
       avgMaxProfitValue,
       avgMaxProfitPct,
+      avgMaxLossValue,
+      avgMaxLossPct,
       rewardRiskRatio,
       profitableRate,
       runs: results.length,
@@ -1135,11 +1145,11 @@ function MultiSimTooltip({ active, payload, label }) {
   }
   const avgProfitEntry = payload.find((p) => p.dataKey === "avgProfitLine");
   if (avgProfitEntry && avgProfitEntry.value != null) {
-    rows.push({ key: "avgProfitLine", label: "Avg Profit", value: avgProfitEntry.value, color: "#31C950" });
+    rows.push({ key: "avgProfitLine", label: "Avg Profit", value: avgProfitEntry.value, color: "#05DF72" });
   }
   const avgLossEntry = payload.find((p) => p.dataKey === "avgLossLine");
   if (avgLossEntry && avgLossEntry.value != null) {
-    rows.push({ key: "avgLossLine", label: "Avg Loss", value: avgLossEntry.value, color: "#F54927" });
+    rows.push({ key: "avgLossLine", label: "Avg Loss", value: avgLossEntry.value, color: "#FF692A" });
   }
   if (!rows.length) return null;
   return (
@@ -1234,11 +1244,12 @@ function MultiSimHistogram({ runs, selectedRunIdx, onSelectRun }) {
                 type="monotone"
                 dataKey="avgProfitLine"
                 name="Avg Profit"
-                stroke="#31C950"
-                strokeWidth={1.5}
+                stroke="#05DF72"
+                strokeWidth={1}
+                strokeOpacity={0.5}
                 strokeDasharray="4 4"
                 dot={false}
-                activeDot={{ r: 4, fill: "#31C950", stroke: "#0a0b0d", strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: "#05DF72", stroke: "#0a0b0d", strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             )}
@@ -1247,11 +1258,12 @@ function MultiSimHistogram({ runs, selectedRunIdx, onSelectRun }) {
                 type="monotone"
                 dataKey="avgLossLine"
                 name="Avg Loss"
-                stroke="#F54927"
-                strokeWidth={1.5}
+                stroke="#FF692A"
+                strokeWidth={1}
+                strokeOpacity={0.5}
                 strokeDasharray="4 4"
                 dot={false}
-                activeDot={{ r: 4, fill: "#F54927", stroke: "#0a0b0d", strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: "#FF692A", stroke: "#0a0b0d", strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             )}
@@ -2834,6 +2846,7 @@ export default function RiskSimulator() {
                           <th className="text-right px-3 py-2 font-medium">Net P/L</th>
                           <th className="text-right px-3 py-2 font-medium">Max DD</th>
                           <th className="text-right px-3 py-2 font-medium">Max Profit</th>
+                          <th className="text-right px-3 py-2 font-medium">Max Loss</th>
                           <th className="text-right px-3 py-2 font-medium">RR</th>
                           <th className="text-right px-3 py-2 font-medium">Profitable Runs</th>
                         </tr>
@@ -2863,6 +2876,9 @@ export default function RiskSimulator() {
                             </td>
                             <td className="px-3 py-1.5 text-right text-emerald-400/80">
                               {fmtPct(p.avgMaxProfitPct)} ({fmtMoney(p.avgMaxProfitValue)})
+                            </td>
+                            <td className="px-3 py-1.5 text-right text-red-400/80">
+                              {fmtPct(p.avgMaxLossPct)} ({fmtMoney(p.avgMaxLossValue)})
                             </td>
                             <td className="px-3 py-1.5 text-right">
                               {isFinite(p.rewardRiskRatio) ? p.rewardRiskRatio.toFixed(2) : "∞"}
