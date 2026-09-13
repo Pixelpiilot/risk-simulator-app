@@ -1123,19 +1123,39 @@ function TradeAnalyticsSection({ trades, initialCapital }) {
 // run, colored by whether that particular run finished profitable or not.
 function MultiSimTooltip({ active, payload, label }) {
   if (!active || !payload || !payload.length) return null;
-  const entry = payload.find((p) => p.dataKey === "netPL");
-  if (!entry) return null;
-  const color = entry.payload.win ? "#7BF1A8" : "#FF8904";
+  const rows = [];
+  const netEntry = payload.find((p) => p.dataKey === "netPL");
+  if (netEntry) {
+    rows.push({
+      key: "netPL",
+      label: "Net P/L",
+      value: netEntry.value,
+      color: netEntry.payload.win ? "#7BF1A8" : "#FF8904",
+    });
+  }
+  const avgProfitEntry = payload.find((p) => p.dataKey === "avgProfitLine");
+  if (avgProfitEntry && avgProfitEntry.value != null) {
+    rows.push({ key: "avgProfitLine", label: "Avg Profit", value: avgProfitEntry.value, color: "#31C950" });
+  }
+  const avgLossEntry = payload.find((p) => p.dataKey === "avgLossLine");
+  if (avgLossEntry && avgLossEntry.value != null) {
+    rows.push({ key: "avgLossLine", label: "Avg Loss", value: avgLossEntry.value, color: "#F54927" });
+  }
+  if (!rows.length) return null;
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 shadow-xl shadow-black/50 font-mono">
       <div className="text-[10px] text-zinc-500 mb-1.5">Scenario : {label}</div>
-      <div className="flex items-center gap-2 text-xs">
-        <span className="w-2 h-2 rounded-full flex-none" style={{ background: color }} />
-        <span className="text-zinc-400">Net P/L</span>
-        <span className="ml-4 font-semibold tabular-nums" style={{ color }}>
-          {entry.value >= 0 ? "+" : ""}
-          {fmtMoney(entry.value)}
-        </span>
+      <div className="space-y-1">
+        {rows.map((r) => (
+          <div key={r.key} className="flex items-center gap-2 text-xs">
+            <span className="w-2 h-2 rounded-full flex-none" style={{ background: r.color }} />
+            <span className="text-zinc-400">{r.label}</span>
+            <span className="ml-4 font-semibold tabular-nums" style={{ color: r.color }}>
+              {r.value >= 0 ? "+" : ""}
+              {fmtMoney(r.value)}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1148,10 +1168,17 @@ function MultiSimTooltip({ active, payload, label }) {
 function MultiSimHistogram({ runs, selectedRunIdx, onSelectRun }) {
   if (!runs || !runs.length) return null;
 
+  const winRuns = runs.filter((r) => r.result.netPL >= 0);
+  const lossRuns = runs.filter((r) => r.result.netPL < 0);
+  const avgProfit = winRuns.length ? winRuns.reduce((s, r) => s + r.result.netPL, 0) / winRuns.length : null;
+  const avgLoss = lossRuns.length ? lossRuns.reduce((s, r) => s + r.result.netPL, 0) / lossRuns.length : null;
+
   const data = runs.map((r) => ({
     index: r.index,
     netPL: r.result.netPL,
     win: r.result.netPL >= 0,
+    avgProfitLine: avgProfit,
+    avgLossLine: avgLoss,
   }));
 
   return (
@@ -1202,6 +1229,32 @@ function MultiSimHistogram({ runs, selectedRunIdx, onSelectRun }) {
                 />
               ))}
             </Bar>
+            {avgProfit != null && (
+              <Line
+                type="monotone"
+                dataKey="avgProfitLine"
+                name="Avg Profit"
+                stroke="#31C950"
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                dot={false}
+                activeDot={{ r: 4, fill: "#31C950", stroke: "#0a0b0d", strokeWidth: 2 }}
+                isAnimationActive={false}
+              />
+            )}
+            {avgLoss != null && (
+              <Line
+                type="monotone"
+                dataKey="avgLossLine"
+                name="Avg Loss"
+                stroke="#F54927"
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+                dot={false}
+                activeDot={{ r: 4, fill: "#F54927", stroke: "#0a0b0d", strokeWidth: 2 }}
+                isAnimationActive={false}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -2826,7 +2879,7 @@ export default function RiskSimulator() {
 
             {mode === "sweep" && !sweep && (
               <div className={`${CARD} py-16 text-center text-zinc-500 text-sm`}>
-                No  run yet.
+                No sweep run yet.
               </div>
             )}
           </main>
